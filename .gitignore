@@ -1,0 +1,12 @@
+**/*.o
+**/dtlz
+**/dtlz.exe
+**/nsga2
+**/nsga2.exe
+**/PISA_arc
+**/PISA_ini
+**/PISA_sel
+**/PISA_sta
+**/PISA_var
+**/markowitz_error.log
+**/markowitz_output.txt
