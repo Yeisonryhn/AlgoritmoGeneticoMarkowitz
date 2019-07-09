@@ -1,7 +1,4 @@
 /*========================================================================
-  PISA  (www.tik.ee.ethz.ch/pisa/)
- 
-  ========================================================================
   Computer Engineering (TIK)
   ETH Zurich
  
@@ -38,7 +35,6 @@ char *log_file = "dtlz_error.log"; /**** Changed for DTLZ.*/
 
 char paramfile[FILE_NAME_LENGTH]; /* file with local parameters */
 
-
 /*==== only used in this file ====*/
 
 /* local parameters from paramfile*/
@@ -57,6 +53,12 @@ double eta_mutation;
 double eta_recombination;
 int use_symmetric_recombination;
 
+//----------------------------------Variables agregadas por mi--------------------------------------------
+//---------------------------------------------------------------------------------------------------------
+char datos[FILE_NAME_LENGTH];/*Nombre del archivo donde irán los datos del problema*/
+double *rendimientos_esperados;
+double **matriz_covarianzas;
+//---------------------------------------------------------------------------------------------------------
 /*-------------------------| individual |-------------------------------*/
 
 void free_individual(individual *ind) 
@@ -134,7 +136,7 @@ int state0()
      /**********| added for DTLZ |**************/
      int i;
      /**********| addition for DTLZ end |*******/
-
+     //printf("hola");
      
      int result; /* stores return values of called functions */
      int *initial_population; /* storing the IDs of the individuals */
@@ -155,13 +157,22 @@ int state0()
           return (1);
      }
 
+     result = leer_datos();
+     
+     if (result != 0)
+     { 
+          log_to_file(log_file, __FILE__, __LINE__,
+                      "No se pueden leer los datos.");
+          return (1);
+     }
+
      /* initializing the first alpha individuals */
      for(i = 0; i < alpha; i++)
      {
- 	 individual *ind = new_individual();
-	 eval(ind);
-	 initial_population[i] = add_individual(ind);
-         if(initial_population[i] == -1)
+     	  individual *ind = new_individual();
+    	  eval(ind);
+    	  initial_population[i] = add_individual(ind);
+        if(initial_population[i] == -1)
             return(1);
      } 
 
@@ -380,13 +391,14 @@ int read_local_parameters()
           return(1);
      } 
 
+     
      if(mu != lambda)
      {
           log_to_file(log_file, __FILE__, 
                       __LINE__, "can't handle mu != lambda");
           return(1);
      }
-
+     /*
      fscanf(fp, "%s", str);
      assert(strcmp(str, "problem") == 0);
      fscanf(fp, "%s", problem); /* fscanf() returns EOF if
@@ -443,7 +455,11 @@ int read_local_parameters()
      assert(strcmp(str, "use_symmetric_recombination") == 0);
      fscanf(fp, "%d", &use_symmetric_recombination);
 
-     
+     //Lectura de donde están los datos de las criptomonedas    MARKOWITZ------------------------------------
+     fscanf(fp, "%s", str);
+     assert(strcmp(str, "datos") == 0);
+     fscanf(fp, "%s", datos);
+     //Fin lectura ------------------------------------------------------------------------------------------
      srand(seed); /* seeding random number generator */
 
      fclose(fp);
@@ -451,6 +467,54 @@ int read_local_parameters()
      return (0);
 }
 
+int leer_datos(){
+
+    FILE *fp;
+    char str[CFG_NAME_LENGTH];//Cadena buffer
+    int i;
+    double numero;
+    assert(reservar_memoria()!=-1);
+
+    fp = fopen(datos, "r"); 
+    assert(fp != NULL);
+    
+    for(i = 0; i < CANT_CRIPTOMONEDAS; i++){//Carga de rendimientos esperados
+        fscanf(fp,"%s", str);
+        rendimientos_esperados[i] = atof(str);
+        printf("%f\n", rendimientos_esperados[i] );
+    }
+     
+    for (int i = 0; i < CANT_CRIPTOMONEDAS; ++i){//Carga de la matriz de varianzas y covarianzas
+        for (int j = 0; j < CANT_CRIPTOMONEDAS; ++j)
+        {
+            fscanf(fp,"%s", str);
+            matriz_covarianzas[i][j]=atof(str);
+            printf("%.10f-",matriz_covarianzas[i][j]);
+        }
+        printf("\n");
+    }
+    fclose(fp);
+    return (0);
+}
+
+int reservar_memoria(){
+
+    rendimientos_esperados = (double *)malloc(CANT_CRIPTOMONEDAS * sizeof(double));
+    if(!rendimientos_esperados){
+        return -1;
+    }    
+    matriz_covarianzas = (double *)malloc(CANT_CRIPTOMONEDAS * sizeof(double));
+    if(!matriz_covarianzas){
+        return -1;
+    }
+    for (int i = 0; i < CANT_CRIPTOMONEDAS; ++i){
+        matriz_covarianzas[i] = (double *)malloc(CANT_CRIPTOMONEDAS * sizeof(double));
+        if(!matriz_covarianzas[i]){
+            return -1;
+        }
+    }
+    return 0;
+}
 
 /* Performs variation. */
 int variate(int *selected, int *result_ids)

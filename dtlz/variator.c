@@ -73,13 +73,13 @@ int main(int argc, char *argv[])
           sscanf(argv[2], "%s", filenamebase);
           sscanf(argv[3], "%lf", &poll);
           assert(poll >= 0);
+          
      }
      else
      {
           printf("Variator - wrong number of arguments\n");
           return (1);
      }
-
      /* generate file names based on 'filenamebase'*/
      sprintf(var_file, "%svar", filenamebase);
      sprintf(sel_file, "%ssel", filenamebase);
@@ -119,17 +119,20 @@ int main(int argc, char *argv[])
      /* state machine: uses the stateX() functions to do the steps required
         in state X. Those state functions have to be implemented by 
         the user in selector_user.c */
-     
+     //printf("current state%d\n", current_state);
      write_state(current_state);
      
      while (current_state != 4) /* Caution: if reading of the sta_file
                                    fails (e.g. no permission) this is an
                                    infinite loop */
+     //printf("hola perro\n");
      {
           current_state = read_state(); /* state == -1 if reading
                                                    fails */
           if (current_state == 0)
           {
+               //printf("Hola\n");
+               write_state(current_state);
                read_common_parameters();
 
                returncode = state0();
