@@ -34,7 +34,6 @@
 /* maximal length of entries in local cfg file */
 #define CFG_NAME_LENGTH 128   /**** change the value if you like */
 
-#define CANT_CRIPTOMONEDAS 11
 /*---| declaration of global variables (defined in variator_user.c) |-----*/
 
 extern char *log_file; /* file to log to */
@@ -48,7 +47,7 @@ struct individual_t
      /**********| added for DTLZ |**************/
      double *x;  /* decision variable vector vector genes*/
      int n;      /* length of the bit_string cuantos genes 11 */
-     double *f;  /* objective vector 2 funciones objetivo*/
+     double *f;  /* objective vector valor de las 2 funciones objetivo */
      
      /**********| addition for DTLZ end |*******/
 };
@@ -178,10 +177,13 @@ int is_finished();
 int read_local_parameters();
 /* read local parameters from file */
 
-/*-------------------------------Funciones para Markowitz------------------------------------------------*/
-int leer_datos();
-int reservar_memoria();
-/*-----------------------------------Fin de funciones para Markowitz--------------------------------------*/
+/*-------------------------------MARKOWITZ FUNCTIONS------------------------------------------------*/
+int read_data();
+int reserve_memory();
+double calc_higher();
+int standardize_individual(individual *ind);
+int eval_MARKOWITZ(individual *p_ind);
+/*-----------------------------------END OF MARKOWITZ FUNCTIONS--------------------------------------*/
 
 individual *new_individual();
 
@@ -220,6 +222,8 @@ int eval_ZDT6(individual *p_ind);
 int eval_SPHERE(individual *p_ind);
 int eval_KUR(individual *p_ind);
 int eval_QV(individual *p_ind);
+
+
 
 void write_output_file();
 
