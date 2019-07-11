@@ -55,10 +55,10 @@ int use_symmetric_recombination;
 
 //----------------------------------Variables agregadas por mi--------------------------------------------
 //---------------------------------------------------------------------------------------------------------
-char datos[FILE_NAME_LENGTH];/*Nombre del archivo donde irán los datos del problema*/
-double *exp_ret;
-double **cov_mat;
-double higher;
+char data[FILE_NAME_LENGTH];/*Name of the file which contains the MARKOWITZ data*/
+double *exp_ret;//expected returns
+double **cov_mat;//covariances matrix
+double higher;//higher value of the rewards
 //---------------------------------------------------------------------------------------------------------
 /*-------------------------| individual |-------------------------------*/
 
@@ -405,7 +405,6 @@ int read_local_parameters()
 	         reading failed. */
 
 	fscanf(fp, "%s", str);
-	printf("%s\n",str );
 	assert(strcmp(str, "seed") == 0);
 	fscanf(fp, "%d", &seed);
 
@@ -456,11 +455,13 @@ int read_local_parameters()
 	assert(strcmp(str, "use_symmetric_recombination") == 0);
 	fscanf(fp, "%d", &use_symmetric_recombination);
 
-	//Lectura de donde están los datos de las criptomonedas    MARKOWITZ------------------------------------
-	fscanf(fp, "%s", str);
-	assert(strcmp(str, "datos") == 0);
-	fscanf(fp, "%s", datos);
-	//Fin lectura ------------------------------------------------------------------------------------------
+	//Reading of the cryptocurrency data for MARKOWITZ problem -------------------------------------------
+	if(strcmp( problem,"MARKOWITZ") == 0){
+		fscanf(fp, "%s", str);
+		assert(strcmp(str, "data") == 0);
+		fscanf(fp, "%s", data);
+	}
+	//En reading -----------------------------------------------------------------------------------------
 	srand(seed); /* seeding random number generator */
 
 	fclose(fp);
@@ -532,8 +533,11 @@ int variate(int *selected, int *result_ids){
 
 	/* do evaluation */
 	for(i = 0; i < mu; i++){
-		int result;
-		standardize_individual(get_individual(result_ids[i]));//Modifiacion para markowitz
+		int result; 
+		/*//Modification for MARKOWITZ problem------------------------------------------------*/
+		if( strcmp( problem, "MARKOWITZ" ) == 0 )
+			standardize_individual(get_individual(result_ids[i]));
+		/*------------------END modification-------------------------------------------------*/
 		result = eval(get_individual(result_ids[i]));
 	}
 
@@ -815,447 +819,399 @@ int eval_DTLZ1(individual *ind){
 
 //se debe crear eval_markowitz
 int eval_DTLZ2(individual *ind){    
-int i = 0;
-int j = 0;
-int n = number_decision_variables;
-int k = n - dimension + 1;
+	int i = 0;
+	int j = 0;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
 
-double g = 0;
-for (i = n - k + 1; i <= n; i++)
-{
-g += pow(ind->x[i-1]-0.5,2);
+	double g = 0;
+	for (i = n - k + 1; i <= n; i++){
+		g += pow(ind->x[i-1]-0.5,2);
+	}
+
+	for (i = 1; i <= dimension; i++){
+		double f = (1 + g);
+
+		for (j = dimension - i; j >= 1; j--){
+			f *= cos(ind->x[j-1] * PISA_PI / 2);
+		}
+
+		if (i > 1){
+			f *= sin(ind->x[(dimension - i + 1) - 1] * PISA_PI / 2);
+		}
+
+		ind->f[i-1] = f;
+	}
+
+	return(0);
 }
 
-for (i = 1; i <= dimension; i++)
-{
-double f = (1 + g);
-for (j = dimension - i; j >= 1; j--)
-{
-f *= cos(ind->x[j-1] * PISA_PI / 2);
-}
-if (i > 1)
-{
-f *= sin(ind->x[(dimension - i + 1) - 1] * PISA_PI / 2);
-}
-
-ind->f[i-1] = f;
-}
-
-return(0);
-}
 
 
+int eval_DTLZ3(individual *ind){    
+	int i = 0;
+	int j = 0;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
 
-int eval_DTLZ3(individual *ind)
-{    
-int i = 0;
-int j = 0;
-int n = number_decision_variables;
-int k = n - dimension + 1;
+	double g = 0;
+	for (i = n - k + 1; i <= n; i++){
+		g += pow(ind->x[i-1]-0.5,2) - cos(20 * PISA_PI * (ind->x[i-1]-0.5));
+	}
+	g = 100 * (k + g);
 
-double g = 0;
-for (i = n - k + 1; i <= n; i++)
-{
-g += pow(ind->x[i-1]-0.5,2) - cos(20 * PISA_PI * (ind->x[i-1]-0.5));
-}
-g = 100 * (k + g);
+	for (i = 1; i <= dimension; i++){
+		double f = (1 + g);
+		for (j = dimension - i; j >= 1; j--){
+			f *= cos(ind->x[j-1] * PISA_PI / 2);
+		}
+		if (i > 1){
+			f *= sin(ind->x[(dimension - i + 1) - 1] * PISA_PI / 2);
+		}
 
-for (i = 1; i <= dimension; i++)
-{
-double f = (1 + g);
-for (j = dimension - i; j >= 1; j--)
-{
-f *= cos(ind->x[j-1] * PISA_PI / 2);
-}
-if (i > 1)
-{
-f *= sin(ind->x[(dimension - i + 1) - 1] * PISA_PI / 2);
+		ind->f[i-1] = f;
+	}
+
+	return(0);
 }
 
-ind->f[i-1] = f;
+int eval_DTLZ4(individual *ind){    
+	int i = 0;
+	int j = 0;
+	double alpha = 100;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
+
+	double g = 0;
+	for (i = n - k + 1; i <= n; i++){
+		g += pow(ind->x[i-1]-0.5,2);
+	}
+
+	for (i = 1; i <= dimension; i++){
+		double f = (1 + g);
+		for (j = dimension - i; j >= 1; j--){
+			f *= cos(pow(ind->x[j-1],alpha) * PISA_PI / 2);
+		}
+		if (i > 1){
+			f *= sin(pow(ind->x[(dimension - i + 1) - 1],alpha) * PISA_PI / 2);
+		}
+
+		ind->f[i-1] = f;
+	}
+
+	return(0);
 }
 
-return(0);
+int eval_DTLZ5(individual *ind){    
+	int i = 0;
+	int j = 0;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
+	double *theta = malloc(dimension * sizeof(double));
+	double t = 0;
+	double g = 0;
+
+	for (i = n - k + 1; i <= n; i++){
+		g += pow(ind->x[i-1] - 0.5, 2);
+	}
+
+	t = PISA_PI / (4 * (1 + g));
+	theta[0] = ind->x[0] * PISA_PI / 2;
+	for (i = 2; i <= dimension - 1; i++){
+		theta[i-1] = t * (1 + 2 * g * ind->x[i-1]);
+	}
+
+	for (i = 1; i <= dimension; i++){
+		double f = (1 + g);
+		for (j = dimension - i; j >= 1; j--){
+			f *= cos(theta[j-1]);
+		}
+		if (i > 1){
+			f *= sin(theta[(dimension - i + 1) - 1]);
+		}
+
+		ind->f[i-1] = f;
+	}
+
+	free(theta);
+	return(0);
 }
 
-int eval_DTLZ4(individual *ind)
-{    
-int i = 0;
-int j = 0;
-double alpha = 100;
-int n = number_decision_variables;
-int k = n - dimension + 1;
+int eval_DTLZ6(individual *ind){    
+	int i = 0;
+	int j = 0;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
+	double *theta = malloc(dimension * sizeof(double));
+	double t = 0;
+	double g = 0;
 
-double g = 0;
-for (i = n - k + 1; i <= n; i++)
-{
-g += pow(ind->x[i-1]-0.5,2);
+	for (i = n - k + 1; i <= n; i++){
+		g += pow(ind->x[i-1], 0.1);
+	}
+
+	t = PISA_PI / (4 * (1 + g));
+	theta[0] = ind->x[0] * PISA_PI / 2;
+	for (i = 2; i <= dimension - 1; i++){
+		theta[i-1] = t * (1 + 2 * g * ind->x[i-1]);
+	}
+
+	for (i = 1; i <= dimension; i++){
+		double f = (1 + g);
+		for (j = dimension - i; j >= 1; j--){
+			f *= cos(theta[j-1]);
+		}
+		if (i > 1){
+			f *= sin(theta[(dimension - i + 1) - 1]);
+		}
+
+		ind->f[i-1] = f;
+	}
+
+	free(theta);
+	return(0);
 }
 
-for (i = 1; i <= dimension; i++)
-{
-double f = (1 + g);
-for (j = dimension - i; j >= 1; j--)
-{
-f *= cos(pow(ind->x[j-1],alpha) * PISA_PI / 2);
-}
-if (i > 1)
-{
-f *= sin(pow(ind->x[(dimension - i + 1) - 1],alpha) * PISA_PI / 2);
-}
+int eval_DTLZ7(individual *ind){    
+	int i = 0;
+	int j = 0;
+	int n = number_decision_variables;
+	int k = n - dimension + 1;
+	double g = 0;
+	double h = 0;
 
-ind->f[i-1] = f;
-}
+	for (i = n - k + 1; i <= n; i++){
+		g += ind->x[i-1];
+	}
+	g = 1 + 9 * g / k;
 
-return(0);
-}
+	for (i = 1; i <= dimension - 1; i++){
+		ind->f[i-1] = ind->x[i-1];
+	}
 
-int eval_DTLZ5(individual *ind)
-{    
-int i = 0;
-int j = 0;
-int n = number_decision_variables;
-int k = n - dimension + 1;
-double *theta = malloc(dimension * sizeof(double));
-double t = 0;
-double g = 0;
+	for (j = 1; j <= dimension - 1; j++){
+		h += ind->x[j-1] / (1 + g) * (1 + sin(3 * PISA_PI * ind->x[j-1]));
+	}
+	h = dimension - h;
+	ind->f[dimension - 1] = (1 + g) * h;
 
-for (i = n - k + 1; i <= n; i++)
-{
-g += pow(ind->x[i-1] - 0.5, 2);
+	return(0);
 }
 
-t = PISA_PI / (4 * (1 + g));
-theta[0] = ind->x[0] * PISA_PI / 2;
-for (i = 2; i <= dimension - 1; i++)
-{
-theta[i-1] = t * (1 + 2 * g * ind->x[i-1]);
+int eval_COMET(individual *ind){
+	double x1;
+	double x2;
+	double x3;
+	double g;
+
+	assert(number_decision_variables == 3);
+	assert(dimension == 3);
+
+	x1 = 1 + (ind->x[0] * 2.5);
+	x2 = -2 + (ind->x[1] * 4);
+	x3 = ind->x[2];
+
+	g = x3;
+
+	ind->f[0] = (1 + g) * (pow(x1,3) * pow(x2,2) - 10 * x1 - 4 * x2);
+	ind->f[1] = (1 + g) * (pow(x1,3) * pow(x2,2) - 10 * x1 + 4 * x2);
+	ind->f[2] = 3 * (1 + g) * pow(x1,2);
+
+	ind->f[0] = ind->f[0] + 100;
+	ind->f[1] = ind->f[1] + 100;
+	ind->f[2] = ind->f[2];
+
+
+	return(0);
 }
 
-for (i = 1; i <= dimension; i++)
-{
-double f = (1 + g);
-for (j = dimension - i; j >= 1; j--)
-{
-f *= cos(theta[j-1]);
-}
-if (i > 1)
-{
-f *= sin(theta[(dimension - i + 1) - 1]);
-}
+int eval_ZDT1(individual *ind){    
+	int i = 0;
+	int n = number_decision_variables;
+	double f1 = 0;
+	double g = 0;
+	double h = 0;
 
-ind->f[i-1] = f;
-}
+	assert(dimension == 2);
+	assert(number_decision_variables >= 2);
 
-free(theta);
-return(0);
-}
+	f1 = ind->x[0];
 
-int eval_DTLZ6(individual *ind)
-{    
-int i = 0;
-int j = 0;
-int n = number_decision_variables;
-int k = n - dimension + 1;
-double *theta = malloc(dimension * sizeof(double));
-double t = 0;
-double g = 0;
+	for (i = 1; i < n; i++){
+		g += ind->x[i];
+	}
+	g = 1 + 9 * g / (n-1);
+	h = 1 - sqrt(f1 / g);
 
-for (i = n - k + 1; i <= n; i++)
-{
-g += pow(ind->x[i-1], 0.1);
+	ind->f[0] = f1;
+	ind->f[1] = g * h;
+
+	return(0);
 }
 
-t = PISA_PI / (4 * (1 + g));
-theta[0] = ind->x[0] * PISA_PI / 2;
-for (i = 2; i <= dimension - 1; i++)
-{
-theta[i-1] = t * (1 + 2 * g * ind->x[i-1]);
+int eval_ZDT2(individual *ind){    
+	int i = 0;
+	int n = number_decision_variables;
+	double f1 = 0;
+	double g = 0;
+	double h = 0;
+
+	assert(dimension == 2);
+	assert(number_decision_variables >= 2);
+
+	f1 = ind->x[0];
+
+	for (i = 1; i < n; i++){
+		g += ind->x[i];
+	}
+	g = 1 + 9 * g / (n-1);
+	h = 1 - pow(f1 / g, 2);
+
+	ind->f[0] = f1;
+	ind->f[1] = g * h;
+
+	return(0);
 }
 
-for (i = 1; i <= dimension; i++)
-{
-double f = (1 + g);
-for (j = dimension - i; j >= 1; j--)
-{
-f *= cos(theta[j-1]);
-}
-if (i > 1)
-{
-f *= sin(theta[(dimension - i + 1) - 1]);
-}
+int eval_ZDT3(individual *ind){    
+	int i = 0;
+	int n = number_decision_variables;
+	double f1 = 0;
+	double g = 0;
+	double h = 0;
 
-ind->f[i-1] = f;
-}
+	assert(dimension == 2);
+	assert(number_decision_variables >= 2);
 
-free(theta);
-return(0);
-}
+	f1 = ind->x[0];
 
-int eval_DTLZ7(individual *ind)
-{    
-int i = 0;
-int j = 0;
-int n = number_decision_variables;
-int k = n - dimension + 1;
-double g = 0;
-double h = 0;
+	for (i = 1; i < n; i++){
+		g += ind->x[i];
+	}
+	g = 1 + 9 * g / (n-1);
+	h = 1 - sqrt(f1 / g) - (f1 / g) * sin(10 * PISA_PI * f1);
 
-for (i = n - k + 1; i <= n; i++)
-{
-g += ind->x[i-1];
-}
-g = 1 + 9 * g / k;
+	ind->f[0] = f1;
+	ind->f[1] = g * h + 1;
 
-for (i = 1; i <= dimension - 1; i++)
-{
-ind->f[i-1] = ind->x[i-1];
+	return(0);
 }
 
-for (j = 1; j <= dimension - 1; j++)
-{
-h += ind->x[j-1] / (1 + g) * (1 + sin(3 * PISA_PI * ind->x[j-1]));
-}
-h = dimension - h;
-ind->f[dimension - 1] = (1 + g) * h;
+int eval_ZDT4(individual *ind){    
+	int i = 0;
+	int n = number_decision_variables;
+	double f1 = 0;
+	double g = 0;
+	double h = 0;
 
-return(0);
-}
+	assert(dimension == 2);
+	assert(number_decision_variables >= 2);
 
-int eval_COMET(individual *ind)
-{
-double x1;
-double x2;
-double x3;
-double g;
+	f1 = ind->x[0];
 
-assert(number_decision_variables == 3);
-assert(dimension == 3);
+	for (i = 1; i < n; i++){
+		double x = ind->x[i];
+		g += x * x - 10 * cos(4 * PISA_PI * x);
+	}
+	g = 1 + 10 * (n - 1) + g;
+	h = 1 - sqrt(f1 / g);
 
-x1 = 1 + (ind->x[0] * 2.5);
-x2 = -2 + (ind->x[1] * 4);
-x3 = ind->x[2];
+	ind->f[0] = f1;
+	ind->f[1] = g * h;
 
-g = x3;
-
-ind->f[0] = (1 + g) * (pow(x1,3) * pow(x2,2) - 10 * x1 - 4 * x2);
-ind->f[1] = (1 + g) * (pow(x1,3) * pow(x2,2) - 10 * x1 + 4 * x2);
-ind->f[2] = 3 * (1 + g) * pow(x1,2);
-
-ind->f[0] = ind->f[0] + 100;
-ind->f[1] = ind->f[1] + 100;
-ind->f[2] = ind->f[2];
-
-
-return(0);
+	return(0);
 }
 
-int eval_ZDT1(individual *ind)
-{    
-int i = 0;
-int n = number_decision_variables;
-double f1 = 0;
-double g = 0;
-double h = 0;
+int eval_ZDT6(individual *ind){    
+	int i = 0;
+	int n = number_decision_variables;
+	double f1 = 0;
+	double g = 0;
+	double h = 0;
 
-assert(dimension == 2);
-assert(number_decision_variables >= 2);
+	assert(dimension == 2);
+	assert(number_decision_variables >= 2);
 
-f1 = ind->x[0];
+	f1 = 1 - exp(-4 * ind->x[0]) * pow(sin(6 * PISA_PI * ind->x[0]), 6);
 
-for (i = 1; i < n; i++)
-{
-g += ind->x[i];
-}
-g = 1 + 9 * g / (n-1);
-h = 1 - sqrt(f1 / g);
+	for (i = 1; i < n; i++){
+		g += ind->x[i];
+	}
+	g = 1 + 9 * pow(g / (n-1), 0.25);
+	h = 1 - pow(f1 / g, 2);
 
-ind->f[0] = f1;
-ind->f[1] = g * h;
+	ind->f[0] = f1;
+	ind->f[1] = g * h;
 
-return(0);
+	return(0);
 }
 
-int eval_ZDT2(individual *ind)
-{    
-int i = 0;
-int n = number_decision_variables;
-double f1 = 0;
-double g = 0;
-double h = 0;
+int eval_SPHERE(individual *ind){    
+	int i, j;
+	int n = number_decision_variables;
+	int m = dimension;
 
-assert(dimension == 2);
-assert(number_decision_variables >= 2);
+	for (j = 0; j < m; j++){
+		double f = 0.0;
+		for (i = 0; i < n; i++){
+			double x = -1000 + 2000 * ind->x[(i + j) % n];
+			if (i == 0){
+				x = x - 1;
+			}
+			f += x * x;
+		}
+		ind->f[j] = f;
+	}
 
-f1 = ind->x[0];
-
-for (i = 1; i < n; i++)
-{
-g += ind->x[i];
-}
-g = 1 + 9 * g / (n-1);
-h = 1 - pow(f1 / g, 2);
-
-ind->f[0] = f1;
-ind->f[1] = g * h;
-
-return(0);
+	return(0);
 }
 
-int eval_ZDT3(individual *ind)
-{    
-int i = 0;
-int n = number_decision_variables;
-double f1 = 0;
-double g = 0;
-double h = 0;
+int eval_KUR(individual *ind){    
+	int i;
+	int n = number_decision_variables;
+	double f = 0;
 
-assert(dimension == 2);
-assert(number_decision_variables >= 2);
+	assert(dimension == 2);
 
-f1 = ind->x[0];
+	for (i = 0; i < n; i++){
+		double x = -10 + 20 * ind->x[i];
+		f += pow(fabs(x), 0.8) + 5 * pow(sin(x), 3) + 3.5828;
+	}
 
-for (i = 1; i < n; i++)
-{
-g += ind->x[i];
-}
-g = 1 + 9 * g / (n-1);
-h = 1 - sqrt(f1 / g) - (f1 / g) * sin(10 * PISA_PI * f1);
+	ind->f[0] = f;
 
-ind->f[0] = f1;
-ind->f[1] = g * h + 1;
+	f = 0;
+	for (i = 0; i < n-1; i++){
+		double x = -10 + 20 * ind->x[i];
+		double x1 = -10 + 20 * ind->x[i+1];
+		f += 1 - exp(-0.2 * sqrt(pow(x, 2) + pow(x1, 2)));
+	}
 
-return(0);
-}
+	ind->f[1] = f;
 
-int eval_ZDT4(individual *ind)
-{    
-int i = 0;
-int n = number_decision_variables;
-double f1 = 0;
-double g = 0;
-double h = 0;
-
-assert(dimension == 2);
-assert(number_decision_variables >= 2);
-
-f1 = ind->x[0];
-
-for (i = 1; i < n; i++)
-{
-double x = ind->x[i];
-g += x * x - 10 * cos(4 * PISA_PI * x);
-}
-g = 1 + 10 * (n - 1) + g;
-h = 1 - sqrt(f1 / g);
-
-ind->f[0] = f1;
-ind->f[1] = g * h;
-
-return(0);
+	return(0);
 }
 
-int eval_ZDT6(individual *ind)
-{    
-int i = 0;
-int n = number_decision_variables;
-double f1 = 0;
-double g = 0;
-double h = 0;
+int eval_QV(individual *ind){    
+	int i;
+	int n = number_decision_variables;
+	double F1 = 0;
+	double F2 = 0;
 
-assert(dimension == 2);
-assert(number_decision_variables >= 2);
+	assert(dimension == 2);
 
-f1 = 1 - exp(-4 * ind->x[0]) * pow(sin(6 * PISA_PI * ind->x[0]), 6);
+	for (i = 0; i < n; i++){
+		double x = -5 + 10 * ind->x[i];
+		F1 += (x)*(x) - 10*cos(2*PISA_PI*(x)) + 10;
+		F2 += (x-1.5)*(x-1.5) - 10*cos(2*PISA_PI*(x-1.5)) + 10;
+	}
+	F1 = pow((F1/n),0.25);
+	F2 = pow((F2/n),0.25);
 
-for (i = 1; i < n; i++)
-{
-g += ind->x[i];
-}
-g = 1 + 9 * pow(g / (n-1), 0.25);
-h = 1 - pow(f1 / g, 2);
+	ind->f[0] = F1;
+	ind->f[1] = F2;
 
-ind->f[0] = f1;
-ind->f[1] = g * h;
-
-return(0);
-}
-
-int eval_SPHERE(individual *ind)
-{    
-int i, j;
-int n = number_decision_variables;
-int m = dimension;
-
-for (j = 0; j < m; j++)
-{
-double f = 0.0;
-for (i = 0; i < n; i++)
-{
-double x = -1000 + 2000 * ind->x[(i + j) % n];
-if (i == 0)
-{
-x = x - 1;
-}
-f += x * x;
-}
-ind->f[j] = f;
-}
-
-return(0);
-}
-
-int eval_KUR(individual *ind)
-{    
-int i;
-int n = number_decision_variables;
-double f = 0;
-
-assert(dimension == 2);
-
-for (i = 0; i < n; i++)
-{
-double x = -10 + 20 * ind->x[i];
-f += pow(fabs(x), 0.8) + 5 * pow(sin(x), 3) + 3.5828;
-}
-
-ind->f[0] = f;
-
-f = 0;
-for (i = 0; i < n-1; i++)
-{
-double x = -10 + 20 * ind->x[i];
-double x1 = -10 + 20 * ind->x[i+1];
-f += 1 - exp(-0.2 * sqrt(pow(x, 2) + pow(x1, 2)));
-}
-
-ind->f[1] = f;
-
-return(0);
-}
-
-int eval_QV(individual *ind)
-{    
-int i;
-int n = number_decision_variables;
-double F1 = 0;
-double F2 = 0;
-
-assert(dimension == 2);
-
-for (i = 0; i < n; i++)
-{
-double x = -5 + 10 * ind->x[i];
-F1 += (x)*(x) - 10*cos(2*PISA_PI*(x)) + 10;
-F2 += (x-1.5)*(x-1.5) - 10*cos(2*PISA_PI*(x-1.5)) + 10;
-}
-F1 = pow((F1/n),0.25);
-F2 = pow((F2/n),0.25);
-
-ind->f[0] = F1;
-ind->f[1] = F2;
-
-return(0);
+	return(0);
 }
 
 /* create a random new individual and allocate memory for it,
@@ -1275,7 +1231,9 @@ individual *new_individual(){
 		return_ind->x[i] = drand(1.0);		
     }   
     
-    standardize_individual(return_ind);///Modificacion para markowitz
+    if( strcmp( problem, "MARKOWITZ" ) == 0){
+    	standardize_individual(return_ind);///addition for markowitz problem
+    }
 
 	for (i = 0; i < dimension; i++){
 		return_ind->f[i] = 0;
@@ -1324,7 +1282,7 @@ void write_output_file(){
 
 		for (j = 0; j < dimension; j++){
 			
-			if( j == 0 ) 
+			if( j == 0 )///// Addition for MARKOWITZ problem 
 				fprintf(fp_out, "%f ", ( higher - temp->f[j] ) );
 			else
 				fprintf(fp_out, "%f ",  temp->f[j] );			
@@ -1352,7 +1310,7 @@ int read_data(){
 	int i;
 	assert(reserve_memory()!=-1);
 
-	fp = fopen(datos, "r"); 
+	fp = fopen(data, "r"); 
 	assert(fp != NULL);
 
 	for(i = 0; i < number_decision_variables; i++){//Carga de rendimientos esperados
@@ -1402,16 +1360,17 @@ double calc_higher(){
 }
 
 int standardize_individual(individual *ind){
-	double acum;
+
+	double accum;
 	int i;
-	acum = 0;
+	accum = 0;
 	
 	for (i = 0; i < number_decision_variables; ++i){
-		acum = acum + ind->x[i];
+		accum = accum + ind->x[i];
 	}
 
 	for (int i = 0; i < number_decision_variables; ++i){
-		ind->x[i]=ind->x[i]/acum;		
+		ind->x[i]=ind->x[i]/accum;		
 	}
 
 	return 0;
@@ -1419,27 +1378,27 @@ int standardize_individual(individual *ind){
 
 int eval_MARKOWITZ(individual *ind){
 
-	double eval_riesgos = 0.0;
-	double eval_rendimientos = 0.0;	
+	double eval_risks = 0.0;
+	double eval_rewards = 0.0;	
     int i,j;
     i = j = 0;    
     
     for (i = 0; i < ind->n; i++){
-        eval_rendimientos = eval_rendimientos + ( ind->x[i] * exp_ret[i] );
+        eval_rewards = eval_rewards + ( ind->x[i] * exp_ret[i] );
     }
 	
-	eval_rendimientos = higher - eval_rendimientos;// de esta manera minimizo
+	eval_rewards = higher - eval_rewards;// de esta manera minimizo
 
 	for (i = 0; i < number_decision_variables; ++i)
     {
     	for (j = 0; j < number_decision_variables; ++j)
     	{
-    		eval_riesgos = eval_riesgos + (ind->x[i] * ind->x[j] * cov_mat[i][j]);
+    		eval_risks = eval_risks + (ind->x[i] * ind->x[j] * cov_mat[i][j]);
     	}
     }
 
-    ind->f[0] = eval_rendimientos;
-    ind->f[1] = eval_riesgos;
+    ind->f[0] = eval_rewards;
+    ind->f[1] = eval_risks;
 
     return 0;
 

@@ -158,6 +158,8 @@ eta_recombination 15 (distribution index for recombination operator)
 use_symmetric_recombination 1 (switch on or off the symmetry
 constraint for recombination)
 
+data data.txt (datafile for using the MARKOWITZ problem, it contains the expected returns in the firs line, and the covariances matrix in the next lines, you whould can erase this "data data.txt" line if you need to use another different problem to MARKOWITZ)
+
 'dtlz_param.txt' is a PISA_parameter file.
 
 
